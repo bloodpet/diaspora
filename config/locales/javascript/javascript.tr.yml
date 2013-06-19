@@ -1,54 +1,124 @@
-#   Copyright (c) 2011, Diaspora Inc.  This file is
+#   Copyright (c) 2010-2013, Diaspora Inc.  This file is
 #   licensed under the Affero General Public License version 3 or later.  See
 #   the COPYRIGHT file.
 
 
-tr: 
-  javascripts: 
-    aspect_dropdown: 
-      add_to_aspect: "Add to aspect"
-      all_aspects: "All aspects"
-      toggle: 
-        few: "In {{count}} aspects"
-        many: "In {{count}} aspects"
-        one: "In {{count}} aspect"
-        other: "In {{count}} aspects"
-        two: "In {{count}} aspects"
-        zero: "Add to aspect"
-    comments: 
-      hide: "hide comments"
-      show: "show all comments"
+
+tr:
+  javascripts:
+    aspect_dropdown:
+      add_to_aspect: "Yönüne ekle"
+      all_aspects: "Tüm yönler"
+      error: "{{name}} ile paylaşım başlatılamadı. Onu yasaklamış olmayasınız?"
+      select_aspects: "Yönleri seç"
+      started_sharing_with: "{{name}} sizinle paylaşıma başladı!"
+      stopped_sharing_with: "{{name}} sizinle paylaşımı durdurdu."
+      toggle:
+        few: "{{count}} yön"
+        many: "{{count}} yön"
+        one: "{{count}} yön"
+        other: "{{count}} yön"
+        two: "{{count}} yön"
+        zero: "Yön seç"
+    aspect_navigation:
+      deselect_all: "Tümünü kaldır"
+      no_aspects: "Hiç yön seçilmedi"
+      select_all: "Tümünü seç"
+    comments:
+      hide: "yorumları gizle"
+      show: "tüm yorumları görüntüle"
     confirm_dialog: "Emin misiniz?"
-    failed_to_like: "Failed to like!"
-    failed_to_post_message: "Failed to post message!"
-    infinite_scroll: 
-      no_more: "No more posts."
-    publisher: 
-      at_least_one_aspect: "You must publish to at least one aspect"
-      limited: "Limited - your post will only be seen by people you are sharing with"
-      public: "Public - your post will be visible to everyone and found by search engines"
-    reshares: 
-      duplicate: "You've already reshared that post!"
-    search_for: "{{name}}'i ara"
-    show_more: "show more"
-    timeago: 
+    delete: "Sil"
+    failed_to_like: "Beğenme başarısız oldu!"
+    failed_to_post_message: "Gönderi başarısız oldu!"
+    getting_started:
+      alright_ill_wait: "Tamam, ben bekleyeceğim."
+      hey: "Merhaba, {{name}}!"
+      no_tags: "Hey, hiç etiket takip etmiyorsunuz! Gerçekten devam etmek istiyor musun?"
+      preparing_your_stream: "Kişiselleştirilmiş akışınız hazırlanıyor..."
+    header:
+      admin: "Yönetici"
+      close: "kapat"
+      contacts: "Kişiler"
+      home: "Ana Sayfa"
+      log_out: "Çıkış yap"
+      mark_all_as_read: "Tümünü okundu olarak işaretle"
+      messages: "Mesajlar"
+      notifications: "Bildirimler"
+      profile: "Profil"
+      recent_notifications: "Son Bildirimler"
+      search: "Find people or #tags"
+      settings: "Ayarlar"
+      view_all: "Tümünü gör"
+    ignore: "Yoksay"
+    infinite_scroll:
+      no_more: "Daha fazla gönderi yok."
+    my_activity: "Etkinliklerim"
+    my_stream: "Akış"
+    people:
+      not_found: "...ve hiç kimse bulunamadı."
+    photo_uploader:
+      looking_good: "OMG, harika görünüyorsun!"
+    publisher:
+      at_least_one_aspect: "En az bir yönünün yayınlanması zorunludur"
+      limited: "Sınırlı - gönderi sadece paylaşılan kişiler tarafından görünür"
+      public: "Genel - gönderi herkes tarafından görünür ve arama motorları tarafından bulunur olacak"
+    reshares:
+      duplicate: "Bu iyi, değil mi? Zaten bu gönderiyi tekrar paylaştın!"
+      post: "<%= name %> kişisinin gönderisini yeniden paylaşamak istiyor musun?"
+      successful: "Gönderi başarıyla yeniden paylaşıldı!"
+    search_for: "{{name}} Ara"
+    show_more: "daha fazlasını göster"
+    stream:
+      comment: "Yorum"
+      follow: "İzle"
+      hide: "Gizle"
+      hide_nsfw_posts: "#nsfw gönderilerin gizle"
+      like: "Beğen"
+      likes:
+        other: "<%= count %> Beğeni"
+        zero: "<%= count %> Beğeni"
+      limited: "Sınırlı"
+      more_comments:
+        other: "Diğer <%= count %> yorum gör"
+        zero: "Diğer <%= count %> yorumu gör"
+      original_post_deleted: "İleti yazarı tarafından silindi."
+      public: "Genel"
+      reshare: "Yeniden paylaş"
+      reshares:
+        other: "<%= count %> Yeniden paylaşma"
+        zero: "<%= count %> Yeniden paylaşma"
+      show_nsfw_post: "İletiyi görüntüle"
+      show_nsfw_posts: "Tümünü göster"
+      unfollow: "İzlemeyi durdur"
+      unlike: "Beğenme"
+    tags:
+      wasnt_that_interesting: "Tamam, benim #{{tagName}} o kadar da ilginç değil..."
+    timeago:
       day: "1 gün"
-      days: "%d günler"
+      days: "%d gün"
       hour: "yaklaşık 1 saat"
       hours: "yaklaşık %d saat"
       minute: "yaklaşık 1 dakika"
-      minutes: "%d dakikalar"
+      minutes: "%d dakika"
       month: "yaklaşık 1 ay"
-      months: "%d aylar"
-      prefixAgo: ""
-      prefixFromNow: ""
+      months: "%d ay"
+      prefixAgo: "önce"
+      prefixFromNow: "önce"
       seconds: "1 dakikadan az"
       suffixAgo: "önce"
-      suffixFromNow: "şimdiden itibaren"
+      suffixFromNow: "şimdi"
       year: "yaklaşık 1 yıl"
-      years: "%d yıllar"
-    videos: 
+      years: "%d yıl"
+    videos:
       unknown: "Bilinmeyen video tipi"
       watch: "Bu videoyu {{provider}}'da izle"
-    web_sockets: 
-      disconnected: "The websocket is closed; posts will no longer be streamed live."
+    viewer:
+      comment: "Yorum"
+      follow_post: "İletiyi izle"
+      home: "ANA SAYFA"
+      like: "Beğen"
+      reshare: "Yeniden paylaş"
+      reshared: "Yeniden paylaştı"
+      stop_following_post: "İletiyi izlemeyi durdur"
+      unlike: "Beğenme"

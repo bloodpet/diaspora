@@ -5,28 +5,25 @@
 require 'spec_helper'
 
 describe StreamHelper do
-  before do
-    @post = Factory(:status_message)
-  end
-  describe "#time_for_sort" do
-    it "returns sort_order for an aspectscontroller" do
-      sort_order = :stored_in_session
-      stub!(:controller).and_return(AspectsController.new)
-      stub!(:session).and_return({:sort_order => sort_order})
-      @post.should_receive(sort_order)
-      time_for_sort(@post)
+  describe "next_page_path" do
+    before do
+      @stream = Stream::Base.new(alice, :max_time => Time.now)
     end
-    it "returns post.created_at otherwise" do
-      stub!(:controller).and_return(mock())
-      time_for_sort(@post).should == @post.created_at
-    end
-  end
+      it 'works for public page' do
+        stub!(:controller).and_return(PostsController.new)
+        next_page_path.should include '/public'
+      end
 
-  describe '#next_page_path' do
-    it 'works for apps page' do
-      stub!(:controller).and_return(AppsController.new)
-      @posts = [Factory(:activity_streams_photo)]
-      next_page_path.should include '/apps/1'
-    end
+      it 'works for stream page when current page is stream' do
+        self.stub!("current_page?").and_return(true)
+        stub!(:controller).and_return(StreamsController.new)
+        next_page_path.should include stream_path
+      end
+
+      it 'works for activity page when current page is not stream' do
+        self.stub!("current_page?").and_return(false)
+        stub!(:controller).and_return(StreamsController.new)
+        next_page_path.should include activity_stream_path
+      end
   end
 end

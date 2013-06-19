@@ -3,54 +3,119 @@
 #   the COPYRIGHT file.
 
 class Post < ActiveRecord::Base
-  require File.join(Rails.root, 'lib/diaspora/web_socket')
   include ApplicationHelper
-  include ROXML
-  include Diaspora::Webhooks
-  include Diaspora::Guid
+
+  include Diaspora::Federated::Shareable
 
   include Diaspora::Likeable
+  include Diaspora::Commentable
+  include Diaspora::Shareable
 
-  xml_attr :diaspora_handle
-  xml_attr :public
-  xml_attr :created_at
 
-  has_many :comments, :dependent => :destroy
+  has_many :participations, :dependent => :delete_all, :as => :target
 
-  has_many :aspect_visibilities
-  has_many :aspects, :through => :aspect_visibilities
+  attr_accessor :user_like
 
-  has_many :post_visibilities
-  has_many :contacts, :through => :post_visibilities
+  xml_attr :provider_display_name
+
   has_many :mentions, :dependent => :destroy
 
   has_many :reshares, :class_name => "Reshare", :foreign_key => :root_guid, :primary_key => :guid
   has_many :resharers, :class_name => 'Person', :through => :reshares, :source => :author
 
-  belongs_to :author, :class_name => 'Person'
-  
-  validates :guid, :uniqueness => true
+  belongs_to :o_embed_cache
 
-  scope :all_public, where(:public => true, :pending => false)
-
-  def diaspora_handle
-    read_attribute(:diaspora_handle) || self.author.diaspora_handle
+  after_create do
+    self.touch(:interacted_at)
   end
 
-  def user_refs
-    if AspectVisibility.exists?(:post_id => self.id)
-      self.post_visibilities.count + 1
+  #scopes
+  scope :includes_for_a_stream, includes(:o_embed_cache, {:author => :profile}, :mentions => {:person => :profile}) #note should include root and photos, but i think those are both on status_message
+
+
+  scope :commented_by, lambda { |person|
+    select('DISTINCT posts.*').joins(:comments).where(:comments => {:author_id => person.id})
+  }
+
+  scope :liked_by, lambda { |person|
+    joins(:likes).where(:likes => {:author_id => person.id})
+  }
+
+  def self.newer(post)
+    where("posts.created_at > ?", post.created_at).reorder('posts.created_at ASC').first
+  end
+
+  def self.older(post)
+    where("posts.created_at < ?", post.created_at).reorder('posts.created_at DESC').first
+  end
+
+  def self.visible_from_author(author, current_user=nil)
+    if current_user.present?
+      current_user.posts_from(author)
     else
-      self.post_visibilities.count
+      author.posts.all_public
     end
   end
 
-  def diaspora_handle= nd
-    self.author = Person.where(:diaspora_handle => nd).first
-    write_attribute(:diaspora_handle, nd)
+  def post_type
+    self.class.name
   end
 
-  def self.diaspora_initialize params
+  def root; end
+  def raw_message; ""; end
+  def mentioned_people; []; end
+  def photos; []; end
+
+  #prevents error when trying to access @post.address in a post different than Reshare and StatusMessage types;
+  #check PostPresenter
+  def address
+  end
+
+  def self.excluding_blocks(user)
+    people = user.blocks.map{|b| b.person_id}
+    scope = scoped
+
+    if people.any?
+      scope = scope.where("posts.author_id NOT IN (?)", people)
+    end
+
+    scope
+  end
+
+  def self.excluding_hidden_shareables(user)
+    scope = scoped
+    if user.has_hidden_shareables_of_type?
+      scope = scope.where('posts.id NOT IN (?)', user.hidden_shareables["#{self.base_class}"])
+    end
+    scope
+  end
+
+  def self.excluding_hidden_content(user)
+    excluding_blocks(user).excluding_hidden_shareables(user)
+  end
+
+  def self.for_a_stream(max_time, order, user=nil)
+    scope = self.for_visible_shareable_sql(max_time, order).
+      includes_for_a_stream
+
+    scope = scope.excluding_hidden_content(user) if user.present?
+
+    scope
+  end
+
+  def reshare_for(user)
+    return unless user
+    reshares.where(:author_id => user.person.id).first
+  end
+
+  def like_for(user)
+    return unless user
+    likes.where(:author_id => user.person.id).first
+  end
+
+  #############
+
+  def self.diaspora_initialize(params)
     new_post = self.new params.to_hash
     new_post.author = params[:author]
     new_post.public = params[:public] if params[:public]
@@ -64,58 +129,6 @@ class Post < ActiveRecord::Base
     false
   end
 
-  # The list of people that should receive this Post.
-  #
-  # @param [User] user The context, or dispatching user.
-  # @return [Array<Person>] The list of subscribers to this post
-  def subscribers(user)
-    if self.public?
-      user.contact_people
-    else
-      user.people_in_aspects(user.aspects_with_post(self.id))
-    end
-  end
-
-  # @param [User] user The user that is receiving this post.
-  # @param [Person] person The person who dispatched this post to the
-  # @return [void]
-  def receive(user, person)
-    #exists locally, but you dont know about it
-    #does not exsist locally, and you dont know about it
-    #exists_locally?
-    #you know about it, and it is mutable
-    #you know about it, and it is not mutable
-    self.class.transaction do
-      local_post = self.class.where(:guid => self.guid).first
-      if local_post && local_post.author_id == self.author_id
-        known_post = user.find_visible_post_by_id(self.guid, :key => :guid)
-        if known_post
-          if known_post.mutable?
-            known_post.update_attributes(self.attributes)
-          else
-            Rails.logger.info("event=receive payload_type=#{self.class} update=true status=abort sender=#{self.diaspora_handle} reason=immutable existing_post=#{known_post.id}")
-          end
-        else
-          user.contact_for(person).receive_post(local_post)
-          user.notify_if_mentioned(local_post)
-          Rails.logger.info("event=receive payload_type=#{self.class} update=true status=complete sender=#{self.diaspora_handle} existing_post=#{local_post.id}")
-          return local_post
-        end
-      elsif !local_post
-        if self.save
-          user.contact_for(person).receive_post(self)
-          user.notify_if_mentioned(self)
-          Rails.logger.info("event=receive payload_type=#{self.class} update=false status=complete sender=#{self.diaspora_handle}")
-          return self
-        else
-          Rails.logger.info("event=receive payload_type=#{self.class} update=false status=abort sender=#{self.diaspora_handle} reason=#{self.errors.full_messages}")
-        end
-      else
-        Rails.logger.info("event=receive payload_type=#{self.class} update=true status=abort sender=#{self.diaspora_handle} reason='update not from post owner' existing_post=#{self.id}")
-      end
-    end
-  end
-
   def activity_streams?
     false
   end
@@ -124,15 +137,21 @@ class Post < ActiveRecord::Base
     I18n.t('notifier.a_post_you_shared')
   end
 
-  # @return [Array<Comment>]
-  def last_three_comments
-    self.comments.order('created_at DESC').limit(3).includes(:author => :profile).reverse
+  def nsfw
+    self.author.profile.nsfw?
   end
 
-  # @return [Integer]
-  def update_comments_counter
-    self.class.where(:id => self.id).
-      update_all(:comments_count => self.comments.count)
+  def self.find_by_guid_or_id_with_user(id, user=nil)
+    key = id.to_s.length <= 8 ? :id : :guid
+    post = if user
+             user.find_visible_shareable_by_id(Post, id, :key => key)
+           else
+             Post.where(key => id).includes(:author, :comments => :author).first
+           end
+
+    # is that a private post?
+    raise(Diaspora::NonPublic) unless user || post.try(:public?)
+
+    post || raise(ActiveRecord::RecordNotFound.new("could not find a post with id #{id}"))
   end
 end
-

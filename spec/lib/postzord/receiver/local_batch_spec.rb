@@ -1,10 +1,9 @@
-require 'spec_helper' 
-require File.join(Rails.root, 'lib','postzord', 'receiver', 'local_batch')
+require 'spec_helper'
 
 describe Postzord::Receiver::LocalBatch do
   before do
-    @object = Factory(:status_message, :author => alice.person)
-    @ids = [bob.id] 
+    @object = FactoryGirl.create(:status_message, :author => alice.person)
+    @ids = [bob.id.to_s]
   end
 
   let(:receiver) { Postzord::Receiver::LocalBatch.new(@object, @ids) }
@@ -17,47 +16,33 @@ describe Postzord::Receiver::LocalBatch do
     end
   end
 
-  describe '#perform!' do
-    it 'calls .create_post_visibilities' do
-      receiver.should_receive(:create_post_visibilities)
-      receiver.perform!
-    end
-
-    it 'sockets to users' do
-      receiver.should_receive(:socket_to_users)
-      receiver.perform!
+  describe '#receive!' do
+    it 'calls .create_share_visibilities' do
+      receiver.should_receive(:create_share_visibilities)
+      receiver.receive!
     end
 
     it 'notifies mentioned users' do
       receiver.should_receive(:notify_mentioned_users)
-      receiver.perform!
+      receiver.receive!
     end
 
     it 'notifies users' do
       receiver.should_receive(:notify_users)
-      receiver.perform!
+      receiver.receive!
     end
   end
 
-  describe '#create_post_visibilities' do
-    it 'calls Postvisibility.batch_import' do
-      PostVisibility.should_receive(:batch_import)
-      receiver.create_post_visibilities
-    end
-  end
-
-  describe '#socket_to_users' do
-    it 'sockets to users' do
-      receiver.users.each do |user|
-        @object.should_receive(:socket_to_user).with(user)
-      end
-      receiver.socket_to_users
+  describe '#create_share_visibilities' do
+    it 'calls sharevisibility.batch_import with hashes' do
+      ShareVisibility.should_receive(:batch_import).with(instance_of(Array), @object)
+      receiver.create_share_visibilities
     end
   end
 
   describe '#notify_mentioned_users' do
     it 'calls notify person for a mentioned person' do
-      sm = Factory(:status_message,
+      sm = FactoryGirl.create(:status_message,
                    :author => alice.person,
                    :text => "Hey @{Bob; #{bob.diaspora_handle}}")
 
@@ -74,14 +59,14 @@ describe Postzord::Receiver::LocalBatch do
 
   describe '#notify_users' do
     it 'calls notify for posts with notification type' do
-      reshare = Factory.create(:reshare)
+      reshare = FactoryGirl.create(:reshare)
       Notification.should_receive(:notify)
       receiver = Postzord::Receiver::LocalBatch.new(reshare, @ids)
       receiver.notify_users
     end
 
     it 'calls notify for posts with notification type' do
-      sm = Factory.create(:status_message, :author => alice.person)
+      sm = FactoryGirl.create(:status_message, :author => alice.person)
       receiver = Postzord::Receiver::LocalBatch.new(sm, @ids)
       Notification.should_not_receive(:notify)
       receiver.notify_users
@@ -90,19 +75,18 @@ describe Postzord::Receiver::LocalBatch do
 
   context 'integrates with a comment' do
     before do
-      sm = Factory(:status_message, :author => alice.person)
-      @object = Factory(:comment, :author => bob.person, :post => sm)
+      sm = FactoryGirl.create(:status_message, :author => alice.person)
+      @object = FactoryGirl.create(:comment, :author => bob.person, :post => sm)
     end
 
-    it 'calls socket_to_users and notify_users' do
-      receiver.should_receive(:socket_to_users)
+    it 'calls notify_users' do
       receiver.should_receive(:notify_users)
       receiver.perform!
     end
 
     it 'does not call create_visibilities and notify_mentioned_users' do
       receiver.should_not_receive(:notify_mentioned_users)
-      receiver.should_not_receive(:create_post_visibilities)
+      receiver.should_not_receive(:create_share_visibilities)
       receiver.perform!
     end
   end

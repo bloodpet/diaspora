@@ -133,10 +133,10 @@ class CreateSchema < ActiveRecord::Migration
     add_index :requests, [:sender_id, :recipient_id], :unique => true
 
     create_table :services do |t|
-      t.string :type
+      t.string :type, :limit => 127
       t.integer :user_id
       t.string :provider
-      t.string :uid
+      t.string :uid, :limit => 127
       t.string :access_token
       t.string :access_secret
       t.string :nickname
@@ -151,16 +151,21 @@ class CreateSchema < ActiveRecord::Migration
       t.boolean :getting_started, :default => true
       t.boolean :disable_mail, :default => false
       t.string :language
-      t.string :email
 
-      t.database_authenticatable
+      t.string :email,              :null => false, :default => ""
+      t.string :encrypted_password, :null => false, :default => ""
 
       t.string   :invitation_token, :limit => 60
       t.datetime :invitation_sent_at
 
-      t.recoverable
-      t.rememberable
-      t.trackable
+      t.string   :reset_password_token
+      t.datetime :remember_created_at
+      t.string   :remember_token
+      t.integer  :sign_in_count, :default => 0
+      t.datetime :current_sign_in_at
+      t.datetime :last_sign_in_at
+      t.string   :current_sign_in_ip
+      t.string   :last_sign_in_ip
 
       t.timestamps
     end

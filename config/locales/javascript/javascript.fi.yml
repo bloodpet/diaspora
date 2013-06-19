@@ -1,37 +1,112 @@
-#   Copyright (c) 2011, Diaspora Inc.  This file is
+#   Copyright (c) 2010-2013, Diaspora Inc.  This file is
 #   licensed under the Affero General Public License version 3 or later.  See
 #   the COPYRIGHT file.
 
 
-fi: 
-  javascripts: 
-    aspect_dropdown: 
-      add_to_aspect: "Add to aspect"
-      all_aspects: "All aspects"
-      toggle: 
-        few: "In {{count}} aspects"
-        many: "In {{count}} aspects"
-        one: "In {{count}} aspect"
-        other: "In {{count}} aspects"
-        two: "In {{count}} aspects"
-        zero: "Add to aspect"
-    comments: 
+
+fi:
+  javascripts:
+    aspect_dropdown:
+      add_to_aspect: "Lisää kontakti"
+      all_aspects: "Kaikki näkymät"
+      error: "Ei voitu aloittaa jakamaan käyttäjän <%= name %> kanssa. Oletko sivuuttanut hänet?"
+      select_aspects: "Valitse näkymät"
+      started_sharing_with: "Olet alkanut jakaa käyttäjän <%= name %> kanssa!"
+      stopped_sharing_with: "Olet lopettanut jakamisen käyttäjän <%= name %> kanssa."
+      toggle:
+        few: "<%= count %> näkymässä"
+        many: "<%= count %> näkymässä"
+        one: "<%= count %> näkymässä"
+        other: "<%= count %> näkymässä"
+        two: "<%= count %> näkymässä"
+        zero: "Valitse näkymät"
+    aspect_navigation:
+      deselect_all: "Poista valinnat"
+      no_aspects: "Näkymiä ei ole valittu"
+      select_all: "Valitse kaikki"
+    comments:
       hide: "piilota kommentit"
       show: "näytä kaikki kommentit"
     confirm_dialog: "Oletko varma?"
+    delete: "Poista"
     failed_to_like: "Tykkääminen epäonnistui!"
     failed_to_post_message: "Viestin lähetys epäonnistui!"
-    infinite_scroll: 
+    getting_started:
+      alright_ill_wait: "Okei, minä odotan."
+      hey: "Hei <%= name %>!"
+      no_tags: "Hei, et seuraa yhtäkään tagia!  Jatketaanko silti?"
+      preparing_your_stream: "Yksilöllistä virtaasi valmistellaan..."
+    header:
+      admin: "Ylläpitäjä"
+      close: "sulje"
+      contacts: "Kontaktit"
+      home: "Koti"
+      log_out: "Kirjaudu ulos"
+      mark_all_as_read: "Merkitse kaikki luetuiksi"
+      messages: "Viestit"
+      notifications: "Ilmoitukset"
+      profile: "Profiili"
+      recent_notifications: "Tuoreet ilmoitukset"
+      search: "Etsi"
+      settings: "Asetukset"
+      view_all: "Näytä kaikki"
+    ignore: "Sivuuta"
+    infinite_scroll:
       no_more: "Ei enempää viestejä."
-    publisher: 
+    my_activity: "Oma toimintani"
+    my_stream: "Virta"
+    people:
+      not_found: "...ketään ei löytynyt."
+    photo_uploader:
+      looking_good: "OMG, näytät upealta!"
+    publisher:
       at_least_one_aspect: "Sinun täytyy julkaista vähintään yhdelle näkymälle."
-      limited: "Limited - your post will only be seen by people you are sharing with"
-      public: "Public - your post will be visible to everyone and found by search engines"
-    reshares: 
-      duplicate: "You've already reshared that post!"
-    search_for: "Etsi nimellä {{name}}"
+      limited: "Rajoitettu - viestisi näkyy vain ihmisille, joiden kanssa jaat"
+      public: "Julkinen - viestisi näkyvät kaikille mukaan lukien hakukoneet ja niiden tulokset"
+    reshares:
+      duplicate: "Olet jo uudelleenjakanut viesti!"
+      post: "Jaa käyttäjän <%= name %> viesti?"
+      successful: "Viesti jaettiin onnistuneesti!"
+    search_for: "Etsi nimellä <%= name %>"
     show_more: "näytä lisää"
-    timeago: 
+    stream:
+      comment: "Kommentoi"
+      follow: "Seuraa"
+      hide: "Piilota"
+      hide_nsfw_posts: "Piilota #nsfw-viestit"
+      like: "Tykkää"
+      likes:
+        few: "<%= count %> tykkäystä"
+        many: "<%= count %> tykkäystä"
+        one: "<%= count %> tykkäys"
+        other: "<%= count %> tykkäystä"
+        two: "<%= count %> tykkäystä"
+        zero: "<%= count %> tykkäystä"
+      limited: "Rajoitettu"
+      more_comments:
+        few: "Näytä <%= count %> muuta kommenttia"
+        many: "Näytä <%= count %> muuta kommenttia"
+        one: "Näytä <%= count %> muu kommentti"
+        other: "Näytä <%= count %> muuta kommenttia"
+        two: "Näytä <%= count %> muuta kommenttia"
+        zero: "Näytä <%= count %> muuta kommenttia"
+      original_post_deleted: "Lähettäjä on poistanut alkuperäisen viestin."
+      public: "Julkinen"
+      reshare: "Jaa uudelleen"
+      reshares:
+        few: "<%= count %> uudelleenjakoa"
+        many: "<%= count %> uudelleenjakoa"
+        one: "<%= count %> uudelleenjako"
+        other: "<%= count %> uudelleenjakoa"
+        two: "<%= count %> uudelleenjakoa"
+        zero: "<%= count %> uudelleenjakoa"
+      show_nsfw_post: "Näytä viesti"
+      show_nsfw_posts: "Näytä kaikki"
+      unfollow: "Lopeta seuraaminen"
+      unlike: "Peru tykkäys"
+    tags:
+      wasnt_that_interesting: "OK, #<%= tagName %> ei tainnut ollakaan kovin kiinnostava aihe..."
+    timeago:
       day: "päivä"
       days: "%d päivää"
       hour: "noin tunti"
@@ -47,8 +122,15 @@ fi:
       suffixFromNow: "tästä alkaen"
       year: "noin vuosi"
       years: "%d vuotta"
-    videos: 
+    videos:
       unknown: "Tuntematon videomuoto"
-      watch: "Katso video {{provider}} :ssa"
-    web_sockets: 
-      disconnected: "The websocket is closed; posts will no longer be streamed live."
+      watch: "Katso video palvelussa <%= provider %>"
+    viewer:
+      comment: "Kommentoi"
+      follow_post: "Seuraa viestiä"
+      home: "KOTI"
+      like: "Tykkää"
+      reshare: "Jaa uudelleen"
+      reshared: "Jaettu uudelleen"
+      stop_following_post: "Lopeta viestin seuraaminen"
+      unlike: "Peru tykkäys"

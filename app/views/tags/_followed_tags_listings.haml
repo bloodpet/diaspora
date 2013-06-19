@@ -3,18 +3,8 @@
 -#   the COPYRIGHT file.
 
 - if user_signed_in?
-  %ul.left_nav
+  %ul.left_nav.sub
     %li
-      %div.root_element
-        = t('aspects.index.tags_following')
-  
-      %ul.sub_nav
-        - if current_user.followed_tags.size > 0
-          - for tg in current_user.followed_tags
-            %li.unfollow{:id => tg.name}
-              .unfollow_icon.hidden
-                = link_to image_tag("icons/monotone_close_exit_delete.png", :height => 16, :title => t('aspects.index.unfollow_tag', :tag => tg.name)), tag_tag_followings_path(:name => tg.name, :remote => true), :confirm => t('are_you_sure'), :method => :delete, :remote => true, :id => "unfollow_" + tg.name
-              =link_to "##{tg.name}", tag_path(:name => tg.name), :class => "tag_selector"
-        - else
-          %li
-            = link_to t('aspects.index.no_tags'), tags_path, :class => "new_aspect"
+      %b=link_to t('streams.followed_tag.title'), followed_tags_stream_path, :class => 'home_selector'
+
+      %ul.sub_nav#tags_list

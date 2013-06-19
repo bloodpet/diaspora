@@ -1,19 +1,19 @@
 class User
   include Rails.application.routes.url_helpers
   def default_url_options
-    {:host => AppConfig[:pod_url]}
+    {:host => AppConfig.pod_uri.host}
   end
 
   alias_method :share_with_original, :share_with
 
   def share_with(*args)
-    fantasy_resque do
+    inlined_jobs do
       share_with_original(*args)
     end
   end
 
   def post(class_name, opts = {})
-    fantasy_resque do
+    inlined_jobs do
       p = build_post(class_name, opts)
       if p.save!
         self.aspects.reload
@@ -30,32 +30,5 @@ class User
       end
       p
     end
-  end
-
-  def comment(text, options = {})
-    fantasy_resque do
-      c = build_comment(options.merge(:text => text))
-      if c.save!
-        Postzord::Dispatcher.build(self, c).post
-      end
-      c
-    end
-  end
-
-  def like(positive, options ={})
-    fantasy_resque do
-      l = build_like(options.merge(:positive => positive))
-      if l.save!
-        Postzord::Dispatcher.build(self, l).post
-      end
-      l
-    end
-  end
-
-  def post_at_time(time)
-    to_aspect = self.aspects.length == 1 ? self.aspects.first : self.aspects.where(:name => "generic")
-    p = self.post(:status_message, :text => 'hi', :to => to_aspect)
-    p.created_at = time
-    p.save!
   end
 end

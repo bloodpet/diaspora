@@ -3,38 +3,23 @@
 #   the COPYRIGHT file.
 
 class TagsController < ApplicationController
-  skip_before_filter :which_action_and_user
   skip_before_filter :set_grammatical_gender
   before_filter :ensure_page, :only => :show
 
   helper_method :tag_followed?
 
   respond_to :html, :only => [:show]
-  respond_to :json, :only => [:index]
+  respond_to :json, :only => [:index, :show]
 
   def index
-    if params[:q] && params[:q].length > 1 && request.format.json?
+    if params[:q] && params[:q].length > 1
       params[:q].gsub!("#", "")
       params[:limit] = !params[:limit].blank? ? params[:limit].to_i : 10
-      @tags = ActsAsTaggableOn::Tag.named_like(params[:q]).limit(params[:limit] - 1)
-      @tags.map! do |obj|
-        { :name => ("#"+obj.name),
-          :value => ("#"+obj.name),
-          :url => tag_path(obj.name)
-        }
-      end
-
-      @tags << {
-        :name => ('#' + params[:q]),
-        :value => ("#" + params[:q]),
-        :url => tag_path(params[:q].downcase)
-      }
-      @tags.uniq!
+      @tags = ActsAsTaggableOn::Tag.autocomplete(params[:q]).limit(params[:limit] - 1)
+      prep_tags_for_javascript
 
       respond_to do |format|
-        format.json{
-          render(:json => @tags.to_json, :status => 200)
-        }
+        format.json{ render(:json => @tags.to_json, :status => 200) }
       end
     else
       respond_to do |format|
@@ -45,43 +30,38 @@ class TagsController < ApplicationController
   end
 
   def show
-    params[:name].downcase!
-    @aspect = :tag
-    if current_user
-      @posts = StatusMessage.
-        joins("LEFT OUTER JOIN post_visibilities ON post_visibilities.post_id = posts.id").
-        joins("LEFT OUTER JOIN contacts ON contacts.id = post_visibilities.contact_id").
-        where(Contact.arel_table[:user_id].eq(current_user.id).or(
-          StatusMessage.arel_table[:public].eq(true).or(
-            StatusMessage.arel_table[:author_id].eq(current_user.person.id)
-          )
-        )).select('DISTINCT posts.*')
-    else
-      @posts = StatusMessage.all_public
+    redirect_to(:action => :show, :name => downcased_tag_name) && return if tag_has_capitals?
+
+    if user_signed_in?
+      gon.tagFollowings = tags
     end
-
-    params[:prefill] = "##{params[:name]} "
-    @posts = @posts.tagged_with(params[:name])
-
-    max_time = params[:max_time] ? Time.at(params[:max_time].to_i) : Time.now
-    @posts = @posts.where(StatusMessage.arel_table[:created_at].lt(max_time))
-    @posts = @posts.includes({:author => :profile}, :comments, :photos).order('posts.created_at DESC').limit(15)
-
-    @commenting_disabled = true
-
-    if params[:only_posts]
-      render :partial => 'shared/stream', :locals => {:posts => @posts}
-    else
-      profiles = Profile.tagged_with(params[:name]).where(:searchable => true).select('profiles.id, profiles.person_id')
-      @people = Person.where(:id => profiles.map{|p| p.person_id}).paginate(:page => params[:page], :per_page => 15)
-      @people_count = Person.where(:id => profiles.map{|p| p.person_id}).count
+    @stream = Stream::Tag.new(current_user, params[:name], :max_time => max_time, :page => params[:page])
+    respond_with do |format|
+      format.json { render :json => @stream.stream_posts.map { |p| LastThreeCommentsDecorator.new(PostPresenter.new(p, current_user)) }}
     end
   end
 
- def tag_followed?
-   if @tag_followed.nil?
-     @tag_followed = TagFollowing.joins(:tag).where(:tags => {:name => params[:name]}, :user_id => current_user.id).exists? #,
-   end
-   @tag_followed
- end
+  private
+
+  def tag_followed?
+    TagFollowing.user_is_following?(current_user, params[:name])
+  end
+
+  def tag_has_capitals?
+    mb_tag = params[:name].mb_chars
+    mb_tag.downcase != mb_tag
+  end
+
+  def downcased_tag_name
+    params[:name].mb_chars.downcase.to_s
+  end
+
+  def prep_tags_for_javascript
+    @tags.map! do |tag|
+      { :name  => ("#" + tag.name) }
+    end
+
+    @tags << { :name  => ('#' + params[:q]) }
+    @tags.uniq!
+  end
 end

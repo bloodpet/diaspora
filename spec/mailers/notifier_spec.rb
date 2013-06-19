@@ -3,7 +3,7 @@ require 'spec_helper'
 describe Notifier do
   include ActionView::Helpers::TextHelper
 
-  let(:person) { Factory(:person) }
+  let(:person) { FactoryGirl.create(:person) }
 
   before do
     Notifier.deliveries = []
@@ -18,18 +18,31 @@ describe Notifier do
       mail.body.encoded.should match /Welcome to bureaucracy!/
       mail.body.encoded.should match /#{bob.username}/
     end
-    it 'mails a bunch of users' do
-      users = []
-      5.times do
-        users << Factory.create(:user)
+
+    context 'mails a bunch of users' do
+      before do
+        @users = []
+        5.times do
+          @users << FactoryGirl.create(:user)
+        end
       end
-      mails = Notifier.admin("Welcome to bureaucracy!", users)
-      mails.length.should == 5
-      mails.each{|mail|
-        this_user = users.detect{|u| mail.to == [u.email]}
-        mail.body.encoded.should match /Welcome to bureaucracy!/
-        mail.body.encoded.should match /#{this_user.username}/
-      }
+      it 'has a body' do
+        mails = Notifier.admin("Welcome to bureaucracy!", @users)
+        mails.length.should == 5
+        mails.each{|mail|
+          this_user = @users.detect{|u| mail.to == [u.email]}
+          mail.body.encoded.should match /Welcome to bureaucracy!/
+          mail.body.encoded.should match /#{this_user.username}/
+        }
+      end
+
+      it "has attachments" do
+        mails = Notifier.admin("Welcome to bureaucracy!", @users, :attachments => [{:name => "retention stats", :file => "here is some file content"}])
+        mails.length.should == 5
+        mails.each{|mail|
+          mail.attachments.count.should == 1
+        }
+      end
     end
   end
 
@@ -45,10 +58,15 @@ describe Notifier do
       mail = Notifier.single_admin("Welcome to bureaucracy!", bob)
       mail.body.encoded.should match /change your notification settings/
     end
+
+    it 'has an optional attachment' do
+      mail = Notifier.single_admin("Welcome to bureaucracy!", bob, :attachments => [{:name => "retention stats", :file => "here is some file content"}])
+      mail.attachments.length.should == 1
+    end
   end
 
   describe ".started_sharing" do
-    let!(:request_mail) {Notifier.started_sharing(bob.id, person.id)}
+    let!(:request_mail) { Notifier.started_sharing(bob.id, person.id) }
 
     it 'goes to the right person' do
       request_mail.to.should == [bob.email]
@@ -66,7 +84,7 @@ describe Notifier do
   describe ".mentioned" do
     before do
       @user = alice
-      @sm = Factory(:status_message)
+      @sm = FactoryGirl.create(:status_message)
       @m = Mention.create(:person => @user.person, :post=> @sm)
 
       @mail = Notifier.mentioned(@user.id, @sm.author.id, @m.id)
@@ -91,7 +109,7 @@ describe Notifier do
 
   describe ".liked" do
     before do
-      @sm = Factory(:status_message, :author => alice.person)
+      @sm = FactoryGirl.create(:status_message, :author => alice.person)
       @like = @sm.likes.create!(:author => bob.person)
       @mail = Notifier.liked(alice.id, @like.author.id, @like.id)
     end
@@ -113,13 +131,13 @@ describe Notifier do
     end
 
     it 'can handle a reshare' do
-      reshare = Factory(:reshare)
+      reshare = FactoryGirl.create(:reshare)
       like = reshare.likes.create!(:author => bob.person)
       mail = Notifier.liked(alice.id, like.author.id, like.id)
     end
 
     it 'can handle a activity streams photo' do
-      as_photo = Factory(:activity_streams_photo)
+      as_photo = FactoryGirl.create(:activity_streams_photo)
       like = as_photo.likes.create!(:author => bob.person)
       mail = Notifier.liked(alice.id, like.author.id, like.id)
     end
@@ -127,8 +145,8 @@ describe Notifier do
 
   describe ".reshared" do
     before do
-      @sm = Factory.create(:status_message, :author => alice.person, :public => true)
-      @reshare = Factory.create(:reshare, :root => @sm, :author => bob.person)
+      @sm = FactoryGirl.create(:status_message, :author => alice.person, :public => true)
+      @reshare = FactoryGirl.create(:reshare, :root => @sm, :author => bob.person)
       @mail = Notifier.reshared(alice.id, @reshare.author.id, @reshare.id)
     end
 
@@ -172,8 +190,7 @@ describe Notifier do
     end
 
     it "FROM: contains the sender's name" do
-      pending
-      @mail.from.should == "\"#{person.name} (Diaspora)\" <#{AppConfig[:smtp_sender_address]}>"
+      @mail["From"].to_s.should == "\"#{@cnv.author.name} (Diaspora*)\" <#{AppConfig.mail.sender_address}>"
     end
 
     it 'SUBJECT: has a snippet of the post contents' do
@@ -198,7 +215,7 @@ describe Notifier do
 
   context "comments" do
     let(:commented_post) {bob.post(:status_message, :text => "It's really sunny outside today, and this is a super long status message!  #notreally", :to => :all)}
-    let(:comment) { eve.comment("Totally is", :post => commented_post)}
+    let(:comment) { eve.comment!(commented_post, "Totally is")}
 
     describe ".comment_on_post" do
       let(:comment_mail) {Notifier.comment_on_post(bob.id, person.id, comment.id).deliver}
@@ -208,12 +225,11 @@ describe Notifier do
       end
 
       it "FROM: contains the sender's name" do
-        pending
-        comment_mail.from.should == "\"#{person.name} (Diaspora)\" <#{AppConfig[:smtp_sender_address]}>"
+        comment_mail["From"].to_s.should == "\"#{eve.name} (Diaspora*)\" <#{AppConfig.mail.sender_address}>"
       end
 
       it 'SUBJECT: has a snippet of the post contents' do
-        comment_mail.subject.should == "Re: #{truncate(commented_post.text, :length => 70)}"
+        comment_mail.subject.should == "Re: #{truncate(commented_post.raw_message, :length => 70)}"
       end
 
       context 'BODY' do
@@ -232,7 +248,7 @@ describe Notifier do
 
       [:reshare, :activity_streams_photo].each do |post_type|
         context post_type.to_s do
-          let(:commented_post) { Factory(post_type, :author => bob.person) }
+          let(:commented_post) { FactoryGirl.create(post_type, :author => bob.person) }
           it 'succeeds' do
             proc {
               comment_mail
@@ -243,19 +259,18 @@ describe Notifier do
     end
 
     describe ".also_commented" do
-      let(:comment_mail) {Notifier.also_commented(bob.id, person.id, comment.id)}
+      let(:comment_mail) { Notifier.also_commented(bob.id, person.id, comment.id) }
 
       it 'TO: goes to the right person' do
         comment_mail.to.should == [bob.email]
       end
 
       it 'FROM: has the name of person commenting as the sender' do
-        pending
-        comment_mail.from.should == "\"#{person.name} (Diaspora)\" <#{AppConfig[:smtp_sender_address]}>"
+        comment_mail["From"].to_s.should == "\"#{eve.name} (Diaspora*)\" <#{AppConfig.mail.sender_address}>"
       end
 
       it 'SUBJECT: has a snippet of the post contents' do
-        comment_mail.subject.should == "Re: #{truncate(commented_post.text, :length => 70)}"
+        comment_mail.subject.should == "Re: #{truncate(commented_post.raw_message, :length => 70)}"
       end
 
       context 'BODY' do
@@ -273,7 +288,7 @@ describe Notifier do
       end
       [:reshare, :activity_streams_photo].each do |post_type|
         context post_type.to_s do
-          let(:commented_post) { Factory(post_type, :author => bob.person) }
+          let(:commented_post) { FactoryGirl.create(post_type, :author => bob.person) }
           it 'succeeds' do
             proc {
               comment_mail
@@ -308,6 +323,15 @@ describe Notifier do
       it 'has the activation link in the body' do
         @confirm_email.body.encoded.should include(confirm_email_url(:token => bob.confirm_email_token))
       end
+    end
+  end
+
+  describe 'hashtags' do
+    it 'escapes hashtags' do
+      mails = Notifier.admin("#Welcome to bureaucracy!", [bob])
+      mails.length.should == 1
+      mail = mails.first
+      mail.body.encoded.should match "<p><a href=\"http://localhost:9887/tags/welcome\">#Welcome</a> to bureaucracy!</p>"
     end
   end
 end

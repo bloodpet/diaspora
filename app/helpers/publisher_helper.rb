@@ -3,15 +3,11 @@
 #   the COPYRIGHT file.
 
 module PublisherHelper
-  def public_value
-    params[:controller] == "tags"
-  end
-
   def remote?
     params[:controller] != "tags"
   end
 
-  def public_helper_text
-    (public_value)? t('javascripts.publisher.public'): t('javascripts.publisher.limited')
+  def all_aspects_selected?(selected_aspects)
+    @all_aspects_selected ||= all_aspects.size == selected_aspects.size
   end
 end

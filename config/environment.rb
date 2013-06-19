@@ -7,25 +7,22 @@ def postgres?
   @using_postgres ||= defined?(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter) && ActiveRecord::Base.connection.is_a?(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter)
 end
 
+def sqlite?
+  @using_sqlite ||= defined?(ActiveRecord::ConnectionAdapters::SQLite3Adapter) && ActiveRecord::Base.connection.class == ActiveRecord::ConnectionAdapters::SQLite3Adapter
+end
+
 # Load the rails application
-require File.expand_path('../application', __FILE__)
+require Pathname.new(__FILE__).dirname.expand_path.join('application')
+
+# Load configuration system early 
+require Rails.root.join('config', 'load_config')
+
 Haml::Template.options[:format] = :html5
 Haml::Template.options[:escape_html] = true
 
-if File.exists?(File.expand_path("./config/locale_settings.yml"))
-  locale_settings = YAML::load(File.open(File.expand_path("./config/locale_settings.yml")))
-  AVAILABLE_LANGUAGES = (locale_settings['available'].length > 0) ? locale_settings['available'] : { :en => 'English' }
-  DEFAULT_LANGUAGE = (AVAILABLE_LANGUAGES.include?(locale_settings['default'])) ? locale_settings['default'] : AVAILABLE_LANGUAGES.keys[0].to_s
-  AVAILABLE_LANGUAGE_CODES = locale_settings['available'].keys.map { |v| v.to_s }
-  LANGUAGE_CODES_MAP = locale_settings['fallbacks']
-  RTL_LANGUAGES = locale_settings['rtl']
-else
-  AVAILABLE_LANGUAGES = { :en => 'English' }
-  DEFAULT_LANGUAGE = 'en'
-  AVAILABLE_LANGUAGE_CODES = ['en']
-  LANGUAGE_CODES_MAP = {}
-  RTL_LANGUAGES = []
-end
+# Blacklist of usernames
+USERNAME_BLACKLIST = ['admin', 'administrator', 'hostmaster', 'info', 'postmaster', 'root', 'ssladmin', 
+  'ssladministrator', 'sslwebmaster', 'sysadmin', 'webmaster', 'support', 'contact', 'example_user1dsioaioedfhgoiesajdigtoearogjaidofgjo']
 
 # Initialize the rails application
 Diaspora::Application.initialize!
@@ -35,9 +32,13 @@ module Devise
   module Strategies
     class TokenAuthenticatable < Authenticatable
       private
-      def valid_request?
+      def valid_params_request?
         params[:controller] == "activity_streams/photos" && params[:action] == "create"
       end
     end
   end
 end
+
+
+# Ensure Builder is loaded
+require 'active_support/builder' unless defined?(Builder)

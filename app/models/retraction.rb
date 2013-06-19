@@ -3,8 +3,7 @@
 #   the COPYRIGHT file.
 
 class Retraction
-  include ROXML
-  include Diaspora::Webhooks
+  include Diaspora::Federated::Base
 
   xml_accessor :post_guid
   xml_accessor :diaspora_handle
@@ -15,7 +14,7 @@ class Retraction
   def subscribers(user)
     unless self.type == 'Person'
       @subscribers ||= self.object.subscribers(user)
-      @subscribers -= self.object.resharers
+      @subscribers -= self.object.resharers unless self.object.is_a?(Photo)
       @subscribers
     else
       raise 'HAX: you must set the subscribers manaully before unfriending' if @subscribers.nil?
@@ -43,7 +42,7 @@ class Retraction
 
   def perform receiving_user
     Rails.logger.debug "Performing retraction for #{post_guid}"
-    self.target.unsocket_from_user receiving_user if target.respond_to? :unsocket_from_user
+
     self.target.destroy if self.target
     Rails.logger.info("event=retraction status=complete type=#{self.type} guid=#{self.post_guid}")
   end

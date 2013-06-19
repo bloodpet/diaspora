@@ -1,3 +1,7 @@
+#   Copyright (c) 2010-2011, Diaspora Inc.  This file is
+#   licensed under the Affero General Public License version 3 or later.  See
+#   the COPYRIGHT file.
+
 class Reshare < Post
 
   belongs_to :root, :class_name => 'Post', :foreign_key => :root_guid, :primary_key => :guid
@@ -5,6 +9,7 @@ class Reshare < Post
   attr_accessible :root_guid, :public
   validates_presence_of :root, :on => :create
   validates_uniqueness_of :root_guid, :scope => :author_id
+  delegate :author, to: :root, prefix: true
 
   xml_attr :root_diaspora_id
   xml_attr :root_guid
@@ -13,8 +18,36 @@ class Reshare < Post
     self.public = true
   end
 
+  after_create do
+    self.root.update_reshares_counter
+  end
+
+  after_destroy do
+    self.root.update_reshares_counter if self.root.present?
+  end
+
   def root_diaspora_id
     self.root.author.diaspora_handle
+  end
+
+  def o_embed_cache
+    self.root ? root.o_embed_cache : super
+  end
+
+  def raw_message
+    self.root ? root.raw_message : super
+  end
+
+  def mentioned_people
+    self.root ? root.mentioned_people : super
+  end
+
+  def photos
+    self.root ? root.photos : []
+  end
+
+  def frame_name
+    self.root ? root.frame_name : nil
   end
 
   def receive(recipient, sender)
@@ -26,13 +59,30 @@ class Reshare < Post
   end
 
   def comment_email_subject
-    I18n.t('reshares.comment_email_subject', :resharer => author.name, :author => root.author.name)
+    I18n.t('reshares.comment_email_subject', :resharer => author.name, :author => root.author_name)
   end
 
   def notification_type(user, person)
     Notifications::Reshared if root.author == user.person
   end
-  
+
+  def nsfw
+    root.try(:nsfw)
+  end
+
+  def absolute_root
+    current = self
+    while( current.is_a?(Reshare) )
+      current = current.root
+    end
+
+    current
+  end
+
+  def address
+    absolute_root.try(:location).try(:address)
+  end
+
   private
 
   def after_parse
@@ -43,26 +93,31 @@ class Reshare < Post
 
     fetched_post = self.class.fetch_post(root_author, self.root_guid)
 
-    #Why are we checking for this?
-    if root_author.diaspora_handle != fetched_post.diaspora_handle
-      raise "Diaspora ID (#{fetched_post.diaspora_handle}) in the root does not match the Diaspora ID (#{root_author.diaspora_handle}) specified in the reshare!"
-    end
+    if fetched_post
+      #Why are we checking for this?
+      if root_author.diaspora_handle != fetched_post.diaspora_handle
+        raise "Diaspora ID (#{fetched_post.diaspora_handle}) in the root does not match the Diaspora ID (#{root_author.diaspora_handle}) specified in the reshare!"
+      end
 
-    fetched_post.save!
+      fetched_post.save!
+    end
   end
 
   # Fetch a remote public post, used for receiving reshares of unknown posts
   # @param [Person] author the remote post's author
   # @param [String] guid the remote post's guid
-  # @return [Post] an unsaved remote post
+  # @return [Post] an unsaved remote post or false if the post was not found
   def self.fetch_post author, guid
-    response = Faraday.get(author.url + "/p/#{guid}.xml")
+    url = author.url + "/p/#{guid}.xml"
+    response = Faraday.get(url)
+    return false if response.status == 404 # Old pod, friendika
+    raise "Failed to get #{url}" unless response.success? # Other error, N/A for example
     Diaspora::Parser.from_xml(response.body)
   end
 
   def root_must_be_public
     if self.root && !self.root.public
-      errors[:base] << "you must reshare public posts"
+      errors[:base] << "Only posts which are public may be reshared."
       return false
     end
   end
