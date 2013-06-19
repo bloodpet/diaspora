@@ -1,7 +1,13 @@
 #author_info
   .right
     - if user_signed_in? && current_user.person != person
-      = aspect_membership_dropdown(contact, person, 'right')
+      - if @block.present?
+        = link_to t('users.privacy_settings.stop_ignoring'), block_path(@block),
+          :method => :delete,
+          :class => "button"
+
+      - else
+        = aspect_membership_dropdown(contact, person, 'right')
     - elsif user_signed_in? && current_user.person == person
       = link_to t('people.profile_sidebar.edit_my_profile'), edit_profile_path, :class => 'button creation'
 
@@ -9,9 +15,10 @@
     = person.name
   %span.diaspora_handle
     = person.diaspora_handle
+    = last_visible_post_for person
 
   .description
-    - if !person.profile.tag_string.blank? && user_signed_in?
+    - if !person.tag_string.blank? && user_signed_in?
       = Diaspora::Taggable.format_tags(person.profile.tag_string)
       - if user_signed_in? && person == current_user.person
         %span.hover_edit
@@ -22,5 +29,7 @@
           = t('.you_have_no_tags')
           %span.add_tags
             = link_to t('.add_some'), edit_profile_path
-
+  - if user_signed_in? && person == current_user.person && current_page?(controller: :people, action: :show)
+    %hr
+    = render 'aspects/aspect_stream', :stream => @stream
 %hr

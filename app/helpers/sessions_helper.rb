@@ -7,4 +7,12 @@ module SessionsHelper
       nil
     end
   end
+
+  def display_registration_link?
+    AppConfig.settings.enable_registrations? && devise_mapping.registerable? && controller_name != 'registrations'
+  end
+
+  def display_password_reset_link?
+    devise_mapping.recoverable? && controller_name != 'passwords'
+  end
 end

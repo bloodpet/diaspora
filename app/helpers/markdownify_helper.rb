@@ -2,8 +2,6 @@
 #   licensed under the Affero General Public License version 3 or later.  See
 #   the COPYRIGHT file.
 
-require File.expand_path("#{Rails.root}/lib/diaspora/markdownify")
-
 module MarkdownifyHelper
   def markdownify(target, render_options={})
 
@@ -12,14 +10,15 @@ module MarkdownifyHelper
       :fenced_code_blocks  => true,
       :space_after_headers => true,
       :strikethrough       => true,
-      :superscript         => true,
-      :tables              => true
+      :tables              => true,
+      :no_intra_emphasis   => true,
     }
 
     render_options[:filter_html] = true
+    render_options[:hard_wrap] ||= true
+    render_options[:safe_links_only] = true
 
-
-    # This ugly little hack basically means 
+    # This ugly little hack basically means
     #   "Give me the rawest contents of target available"
     if target.respond_to?(:raw_message)
       message = target.raw_message
@@ -31,7 +30,6 @@ module MarkdownifyHelper
 
     return '' if message.blank?
 
-    #renderer = Redcarpet::Render::HTML.new(render_options)
     renderer = Diaspora::Markdownify::HTML.new(render_options)
     markdown = Redcarpet::Markdown.new(renderer, markdown_options)
 
@@ -40,10 +38,15 @@ module MarkdownifyHelper
     if target.respond_to?(:format_mentions)
       message = target.format_mentions(message)
     end
-    
+
     message = Diaspora::Taggable.format_tags(message, :no_escape => true)
 
     return message.html_safe
+  end
+  
+  def strip_markdown(text)
+    renderer = Redcarpet::Markdown.new(Redcarpet::Render::StripDown, :autolink => true)
+    renderer.render(text)
   end
 
   def process_newlines(message)

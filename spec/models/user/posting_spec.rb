@@ -22,19 +22,14 @@ describe User do
     it 'saves post into visible post ids' do
       lambda {
         alice.add_to_streams(@post, @aspects)
-      }.should change{alice.visible_posts(:by_members_of => @aspects).length}.by(1)
-      alice.visible_posts(:by_members_of => @aspects).should include @post
+      }.should change{alice.visible_shareables(Post, :by_members_of => @aspects).length}.by(1)
+      alice.visible_shareables(Post, :by_members_of => @aspects).should include @post
     end
 
     it 'saves post into each aspect in aspect_ids' do
       alice.add_to_streams(@post, @aspects)
       @aspect.reload.post_ids.should include @post.id
       @aspect1.reload.post_ids.should include @post.id
-    end
-
-    it 'sockets the post to the poster' do
-      @post.should_receive(:socket_to_user).with(alice, anything)
-      alice.add_to_streams(@post, @aspects)
     end
   end
 
